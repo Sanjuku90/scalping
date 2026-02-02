@@ -1,10 +1,17 @@
 import OpenAI from "openai";
 
-// Configured for Replit AI Integrations
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// Configured for Replit AI Integrations - lazy initialization to avoid startup crash
+let openai: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI | null {
+  if (!openai && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    });
+  }
+  return openai;
+}
 
 export async function generateAIAnalysis(symbol: string, price: number, rsi: number | null, macd: number | null, sma: number | null) {
   try {
@@ -26,8 +33,14 @@ export async function generateAIAnalysis(symbol: string, price: number, rsi: num
       "takeProfit": "prix suggéré (objectif rapide)"
     }`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-5.2",
+    const client = getOpenAIClient();
+    if (!client) {
+      console.log("OpenAI not configured - skipping AI analysis");
+      return null;
+    }
+    
+    const response = await client.chat.completions.create({
+      model: "gpt-4o",
       messages: [{ role: "system", content: "Tu es un algorithme de scalping HFT ultra-performant." }, { role: "user", content: prompt }],
       response_format: { type: "json_object" },
     });
@@ -68,8 +81,21 @@ Réponds UNIQUEMENT au format JSON:
   "reasoning": "Les raisons techniques de cette décision"
 }`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-5.2",
+    const client = getOpenAIClient();
+    if (!client) {
+      console.log("OpenAI not configured - returning default signal");
+      return {
+        direction: "BUY",
+        confidence: "LOW",
+        analysis: "OpenAI non configuré - signal par défaut.",
+        stopLoss: (price * 0.995).toFixed(4),
+        takeProfit: (price * 1.01).toFixed(4),
+        reasoning: "Signal de secours - API non configurée"
+      };
+    }
+    
+    const response = await client.chat.completions.create({
+      model: "gpt-4o",
       messages: [
         { 
           role: "system", 
