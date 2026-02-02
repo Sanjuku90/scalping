@@ -122,6 +122,50 @@ export async function fetchTechnicalIndicator(symbol: string, func: "RSI" | "MAC
   }
 }
 
+export async function generateInstantSignal(symbol: string) {
+  console.log(`[INSTANT AI ANALYSIS] Generating signal for ${symbol}...`);
+  
+  let priceData;
+  let symbolForTech = symbol.replace("/", "");
+
+  if (symbol.includes("/")) {
+    const [from, to] = symbol.split("/");
+    priceData = await fetchForexPrice(from, to);
+  } else {
+    priceData = await fetchMarketPrice(symbol);
+  }
+
+  if (!priceData) throw new Error("Impossible de récupérer les données de prix");
+
+  const [rsiData, macdData, smaData] = await Promise.all([
+    fetchTechnicalIndicator(symbolForTech, "RSI", "1min"),
+    fetchTechnicalIndicator(symbolForTech, "MACD", "1min"),
+    fetchTechnicalIndicator(symbolForTech, "SMA", "1min")
+  ]);
+
+  const price = parseFloat(priceData.price);
+  const rsi = rsiData ? parseFloat(rsiData.RSI) : null;
+  const macd = macdData ? parseFloat(macdData.MACD) : null;
+  const sma = smaData ? parseFloat(smaData.SMA) : null;
+  
+  const aiDecision = await generateAIAnalysis(symbol, price, rsi, macd, sma);
+
+  if (aiDecision && aiDecision.direction) {
+    return await storage.createSignal({
+      pair: symbol,
+      direction: aiDecision.direction,
+      entryPrice: priceData.price,
+      stopLoss: aiDecision.stopLoss || (aiDecision.direction === "BUY" ? (price * 0.998).toFixed(4) : (price * 1.002).toFixed(4)),
+      takeProfit: aiDecision.takeProfit || (aiDecision.direction === "BUY" ? (price * 1.005).toFixed(4) : (price * 0.995).toFixed(4)),
+      status: "ACTIVE",
+      analysis: `[INSTANT IA] ${aiDecision.analysis}`,
+      isPremium: true
+    });
+  }
+  
+  throw new Error("L'IA n'a pas pu générer de signal concluant pour le moment.");
+}
+
 export async function generateSignals() {
   console.log(`[AI SCAN] Scanning markets at ${new Date().toLocaleTimeString()}...`);
   const symbols = ["AAPL", "EUR/USD", "GBP/USD", "TSLA", "MSFT", "GOOGL", "BTC/USD", "ETH/USD"];

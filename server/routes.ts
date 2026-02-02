@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
-import { fetchMarketPrice, generateSignals } from "./market";
+import { fetchMarketPrice, generateSignals, generateInstantSignal } from "./market";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -14,6 +14,18 @@ export async function registerRoutes(
   // Setup Auth first
   await setupAuth(app);
   registerAuthRoutes(app);
+
+  // Instant AI Signal request
+  app.post("/api/signals/instant", isAuthenticated, async (req, res) => {
+    try {
+      const { symbol } = req.body;
+      if (!symbol) return res.status(400).json({ message: "Symbole requis" });
+      const signal = await generateInstantSignal(symbol);
+      res.json(signal);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message || "Erreur lors de la génération du signal" });
+    }
+  });
 
   // Market Data endpoint
   app.get("/api/market/:symbol", isAuthenticated, async (req, res) => {

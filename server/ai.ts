@@ -8,25 +8,27 @@ const openai = new OpenAI({
 
 export async function generateAIAnalysis(symbol: string, price: number, rsi: number | null, macd: number | null, sma: number | null) {
   try {
-    const prompt = `En tant qu'expert en trading haute fréquence (scalping), analyse ces données pour ${symbol} :
-    - Prix : ${price}
-    - RSI : ${rsi ?? 'N/A'}
-    - MACD : ${macd ?? 'N/A'}
-    - SMA : ${sma ?? 'N/A'}
+    const prompt = `En tant qu'expert en trading haute fréquence (scalping), analyse instantanément ces données pour ${symbol} :
+    - Prix actuel : ${price}
+    - RSI (1min) : ${rsi ?? 'N/A'}
+    - MACD (1min) : ${macd ?? 'N/A'}
+    - SMA (1min) : ${sma ?? 'N/A'}
 
-    RÈGLE : Tu dois décider si un signal de trading doit être généré.
+    RÈGLE CRITIQUE : Tu dois générer une position de trading IMMÉDIATE pour un scalping rapide (quelques minutes). 
+    Sois précis sur les niveaux de prix. Analyse les micro-tendances.
+    
     Réponds UNIQUEMENT au format JSON :
     {
-      "shouldSignal": boolean,
-      "direction": "BUY" | "SELL" | null,
-      "analysis": "ton analyse courte en français",
-      "stopLoss": "prix suggéré",
-      "takeProfit": "prix suggéré"
+      "shouldSignal": true,
+      "direction": "BUY" | "SELL",
+      "analysis": "ton analyse ultra-rapide et technique en français (max 2 phrases)",
+      "stopLoss": "prix suggéré (très serré pour scalping)",
+      "takeProfit": "prix suggéré (objectif rapide)"
     }`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
+      model: "gpt-5.2",
+      messages: [{ role: "system", content: "Tu es un algorithme de scalping HFT ultra-performant." }, { role: "user", content: prompt }],
       response_format: { type: "json_object" },
     });
 
