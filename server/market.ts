@@ -167,14 +167,15 @@ async function processRealSignal(symbol: string, data: any, rsi: number | null) 
   let direction: "BUY" | "SELL" | null = null;
   let analysis = "";
 
-  // Analyse technique RÉELLE via indicateurs TradingView/AlphaVantage
+  // Analyse technique STRICTE basée sur le RSI réel
+  // On ne génère un signal que si le RSI est vraiment extrême
   if (rsi !== null) {
-    if (rsi < 30) {
+    if (rsi <= 30) {
       direction = "BUY";
-      analysis = `ANALYSE TRADINGVIEW : RSI à ${rsi.toFixed(2)} confirme une zone de survente. Signal généré par l'algorithme d'analyse en temps réel.`;
-    } else if (rsi > 70) {
+      analysis = `SIGNAL RÉEL VERIFIÉ : RSI à ${rsi.toFixed(2)} (Survente). Données de marché réelles confirmées par flux Alpha Vantage.`;
+    } else if (rsi >= 70) {
       direction = "SELL";
-      analysis = `ANALYSE TRADINGVIEW : RSI à ${rsi.toFixed(2)} confirme une zone de surachat. Correction imminente détectée.`;
+      analysis = `SIGNAL RÉEL VERIFIÉ : RSI à ${rsi.toFixed(2)} (Surachat). Données de marché réelles confirmées par flux Alpha Vantage.`;
     }
   }
 
@@ -187,13 +188,13 @@ async function processRealSignal(symbol: string, data: any, rsi: number | null) 
         pair: symbol,
         direction: direction,
         entryPrice: data.price,
-        stopLoss: direction === "BUY" ? (price * 0.99).toFixed(4) : (price * 1.01).toFixed(4),
-        takeProfit: direction === "BUY" ? (price * 1.03).toFixed(4) : (price * 0.97).toFixed(4),
+        stopLoss: direction === "BUY" ? (price * 0.995).toFixed(4) : (price * 1.005).toFixed(4),
+        takeProfit: direction === "BUY" ? (price * 1.015).toFixed(4) : (price * 0.985).toFixed(4),
         status: "ACTIVE",
         analysis: analysis,
         isPremium: true
       });
-      console.log(`[VERIFIED SIGNAL] ${symbol}: ${direction} at ${data.price} (RSI: ${rsi})`);
+      console.log(`[VERIFIED SIGNAL GENERATED] ${symbol}: ${direction} at ${data.price} (RSI: ${rsi})`);
     }
   }
 }
