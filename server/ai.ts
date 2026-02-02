@@ -8,23 +8,33 @@ const openai = new OpenAI({
 
 export async function generateAIAnalysis(symbol: string, price: number, rsi: number | null, macd: number | null, sma: number | null) {
   try {
-    const prompt = `En tant qu'expert en trading haute fréquence (scalping), analyse les données suivantes pour ${symbol} :
-    - Prix actuel : ${price}
-    - RSI (15m) : ${rsi ?? 'N/A'}
-    - MACD (15m) : ${macd ?? 'N/A'}
-    - SMA (15m) : ${sma ?? 'N/A'}
+    const prompt = `En tant qu'expert en trading haute fréquence (scalping), analyse ces données pour ${symbol} :
+    - Prix : ${price}
+    - RSI : ${rsi ?? 'N/A'}
+    - MACD : ${macd ?? 'N/A'}
+    - SMA : ${sma ?? 'N/A'}
 
-    Donne une analyse très courte (max 2 phrases) et percutante en français pour justifier un signal de trading. Sois direct et technique. Pas de blabla inutile.`;
+    RÈGLE : Tu dois décider si un signal de trading doit être généré.
+    Réponds UNIQUEMENT au format JSON :
+    {
+      "shouldSignal": boolean,
+      "direction": "BUY" | "SELL" | null,
+      "analysis": "ton analyse courte en français",
+      "stopLoss": "prix suggéré",
+      "takeProfit": "prix suggéré"
+    }`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
-      max_completion_tokens: 100,
+      response_format: { type: "json_object" },
     });
 
-    return response.choices[0].message.content || "Analyse technique confirmée par IA.";
+    const content = response.choices[0].message.content;
+    if (!content) return null;
+    return JSON.parse(content);
   } catch (error) {
-    console.error("Erreur AI Analysis:", error);
+    console.error("Erreur AI Decision:", error);
     return null;
   }
 }
