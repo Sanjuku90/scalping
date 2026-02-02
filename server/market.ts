@@ -6,22 +6,19 @@ const BASE_URL = "https://www.alphavantage.co/query";
 
 // Caching to respect rate limits
 const cache: Record<string, { data: any, timestamp: number }> = {};
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes for free tier
+const CACHE_TTL = 30 * 60 * 1000;
 
 async function axiosGetWithRetry(params: any, retries = 2) {
   for (let i = 0; i <= retries; i++) {
     try {
       const response = await axios.get(BASE_URL, { params });
-      
-      // Alpha Vantage returns 200 even for rate limits or errors
       const info = response.data["Information"] || response.data["Note"] || response.data["ErrorMessage"];
       if (info) {
-        console.warn(`Alpha Vantage API Notice for ${params.function}: ${info}`);
         if (info.includes("rate limit")) {
           await new Promise(resolve => setTimeout(resolve, 5000 * (i + 1)));
           continue;
         }
-        return response; // Return anyway to let caller handle empty data
+        return response;
       }
       return response;
     } catch (error) {
@@ -34,9 +31,7 @@ async function axiosGetWithRetry(params: any, retries = 2) {
 
 export async function fetchMarketPrice(symbol: string) {
   const cacheKey = `price_${symbol}`;
-  if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < CACHE_TTL) {
-    return cache[cacheKey].data;
-  }
+  if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < CACHE_TTL) return cache[cacheKey].data;
 
   try {
     const response = await axiosGetWithRetry({
@@ -44,9 +39,7 @@ export async function fetchMarketPrice(symbol: string) {
       symbol: symbol,
       apikey: ALPHA_VANTAGE_KEY,
     });
-
     if (!response) return null;
-
     const data = response.data["Global Quote"];
     if (!data || !data["05. price"]) return null;
 
@@ -56,12 +49,10 @@ export async function fetchMarketPrice(symbol: string) {
       change: data["09. change"],
       changePercent: data["10. change percent"],
     };
-
     const updated = await storage.updateMarketData(marketData);
     cache[cacheKey] = { data: updated, timestamp: Date.now() };
     return updated;
   } catch (error) {
-    console.error(`Error fetching price for ${symbol}:`, error);
     return null;
   }
 }
@@ -69,9 +60,7 @@ export async function fetchMarketPrice(symbol: string) {
 export async function fetchForexPrice(from: string, to: string) {
   const symbol = `${from}/${to}`;
   const cacheKey = `forex_${symbol}`;
-  if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < CACHE_TTL) {
-    return cache[cacheKey].data;
-  }
+  if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < CACHE_TTL) return cache[cacheKey].data;
 
   try {
     const response = await axiosGetWithRetry({
@@ -80,9 +69,7 @@ export async function fetchForexPrice(from: string, to: string) {
       to_currency: to,
       apikey: ALPHA_VANTAGE_KEY,
     });
-
     if (!response) return null;
-
     const data = response.data["Realtime Currency Exchange Rate"];
     if (!data || !data["5. Exchange Rate"]) return null;
 
@@ -92,90 +79,95 @@ export async function fetchForexPrice(from: string, to: string) {
       change: "0",
       changePercent: "0%",
     };
-
     const updated = await storage.updateMarketData(marketData);
     cache[cacheKey] = { data: updated, timestamp: Date.now() };
     return updated;
   } catch (error) {
-    console.error(`Error fetching forex for ${from}/${to}:`, error);
     return null;
   }
 }
 
-export async function fetchRealRSI(symbol: string) {
-  const cacheKey = `rsi_${symbol}`;
-  if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < CACHE_TTL) {
-    return cache[cacheKey].data;
-  }
+export async function fetchTechnicalIndicator(symbol: string, func: "RSI" | "MACD" | "SMA", interval: string = "15min") {
+  const cacheKey = `${func}_${symbol}_${interval}`;
+  if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < CACHE_TTL) return cache[cacheKey].data;
 
   try {
-    const response = await axiosGetWithRetry({
-      function: "RSI",
+    const params: any = {
+      function: func,
       symbol: symbol,
-      interval: "daily",
+      interval: interval,
       time_period: "14",
       series_type: "close",
       apikey: ALPHA_VANTAGE_KEY,
-    });
-
-    if (!response) return null;
-
-    const technicalData = response.data["Technical Analysis: RSI"];
-    if (!technicalData) {
-       console.warn(`Technical data (RSI) missing for ${symbol}. API limit likely.`);
-       return null;
+    };
+    if (func === "MACD") {
+      delete params.time_period;
     }
 
+    const response = await axiosGetWithRetry(params);
+    if (!response) return null;
+
+    const key = `Technical Analysis: ${func}`;
+    const technicalData = response.data[key];
+    if (!technicalData) return null;
+
     const lastRef = Object.keys(technicalData)[0];
-    const rsi = parseFloat(technicalData[lastRef]["RSI"]);
-    cache[cacheKey] = { data: rsi, timestamp: Date.now() };
-    return rsi;
+    const data = technicalData[lastRef];
+    cache[cacheKey] = { data: data, timestamp: Date.now() };
+    return data;
   } catch (error) {
-    console.error(`Error fetching RSI for ${symbol}:`, error);
     return null;
   }
 }
 
 export async function generateSignals() {
-  // Reduction des symboles pour rester dans les limites de la clé gratuite (25 requêtes/jour)
-  const symbols = ["AAPL", "EUR/USD"];
+  const symbols = ["AAPL", "EUR/USD", "GBP/USD", "TSLA"];
   
   for (const symbol of symbols) {
-    await new Promise(resolve => setTimeout(resolve, 15000)); // Delai important pour la version gratuite
+    await new Promise(resolve => setTimeout(resolve, 15000));
     
     let priceData;
-    let rsi;
+    let symbolForTech = symbol.replace("/", "");
 
     if (symbol.includes("/")) {
       const [from, to] = symbol.split("/");
       priceData = await fetchForexPrice(from, to);
-      rsi = await fetchRealRSI(from + to);
     } else {
       priceData = await fetchMarketPrice(symbol);
-      rsi = await fetchRealRSI(symbol);
     }
 
-    if (priceData) {
-      await processRealSignal(symbol, priceData, rsi);
-    }
+    if (!priceData) continue;
+
+    // SCALPING: Use 15min interval for faster signals
+    const rsiData = await fetchTechnicalIndicator(symbolForTech, "RSI", "15min");
+    const macdData = await fetchTechnicalIndicator(symbolForTech, "MACD", "15min");
+    const smaData = await fetchTechnicalIndicator(symbolForTech, "SMA", "15min");
+
+    await processScalpingSignal(symbol, priceData, rsiData, macdData, smaData);
   }
 }
 
-async function processRealSignal(symbol: string, data: any, rsi: number | null) {
+async function processScalpingSignal(symbol: string, data: any, rsiData: any, macdData: any, smaData: any) {
   const price = parseFloat(data.price);
+  const rsi = rsiData ? parseFloat(rsiData.RSI) : null;
+  const macd = macdData ? parseFloat(macdData.MACD) : null;
+  const macdSignal = macdData ? parseFloat(macdData.MACD_Signal) : null;
+  const sma = smaData ? parseFloat(smaData.SMA) : null;
   
   let direction: "BUY" | "SELL" | null = null;
   let analysis = "";
 
-  // Analyse technique STRICTE basée sur le RSI réel
-  // On ne génère un signal que si le RSI est vraiment extrême
-  if (rsi !== null) {
-    if (rsi <= 30) {
+  // Scalping Strategy: RSI + MACD + SMA
+  // BUY: RSI < 40 + MACD > Signal + Price > SMA
+  // SELL: RSI > 60 + MACD < Signal + Price < SMA
+  
+  if (rsi !== null && macd !== null && macdSignal !== null && sma !== null) {
+    if (rsi < 40 && macd > macdSignal && price > sma) {
       direction = "BUY";
-      analysis = `SIGNAL RÉEL VERIFIÉ : RSI à ${rsi.toFixed(2)} (Survente). Données de marché réelles confirmées par flux Alpha Vantage.`;
-    } else if (rsi >= 70) {
+      analysis = `SCALPING RÉEL (15m) : RSI(${rsi.toFixed(2)}) en zone de rebond, MACD croisement haussier et prix au-dessus de la SMA. Signal de scalping haute probabilité.`;
+    } else if (rsi > 60 && macd < macdSignal && price < sma) {
       direction = "SELL";
-      analysis = `SIGNAL RÉEL VERIFIÉ : RSI à ${rsi.toFixed(2)} (Surachat). Données de marché réelles confirmées par flux Alpha Vantage.`;
+      analysis = `SCALPING RÉEL (15m) : RSI(${rsi.toFixed(2)}) en zone de surachat, MACD croisement baissier et prix sous la SMA. Signal de scalping haute probabilité.`;
     }
   }
 
@@ -188,13 +180,13 @@ async function processRealSignal(symbol: string, data: any, rsi: number | null) 
         pair: symbol,
         direction: direction,
         entryPrice: data.price,
-        stopLoss: direction === "BUY" ? (price * 0.995).toFixed(4) : (price * 1.005).toFixed(4),
-        takeProfit: direction === "BUY" ? (price * 1.015).toFixed(4) : (price * 0.985).toFixed(4),
+        stopLoss: direction === "BUY" ? (price * 0.998).toFixed(4) : (price * 1.002).toFixed(4),
+        takeProfit: direction === "BUY" ? (price * 1.005).toFixed(4) : (price * 0.995).toFixed(4),
         status: "ACTIVE",
         analysis: analysis,
         isPremium: true
       });
-      console.log(`[VERIFIED SIGNAL GENERATED] ${symbol}: ${direction} at ${data.price} (RSI: ${rsi})`);
+      console.log(`[SCALPING SIGNAL] ${symbol}: ${direction} at ${data.price}`);
     }
   }
 }
