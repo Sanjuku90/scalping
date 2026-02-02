@@ -228,16 +228,31 @@ export async function generateInstantSignal(symbol: string) {
   if (!priceData) {
     console.log(`[INSTANT AI] No API data available, using AI knowledge for ${symbol}`);
     
-    // Estimate typical prices for known assets
+    // Prix estimés par défaut pour tous les actifs supportés
     const estimatedPrices: Record<string, number> = {
+      // Forex
       "EUR/USD": 1.0850,
       "GBP/USD": 1.2650,
+      "USD/JPY": 149.50,
+      "USD/CHF": 0.8850,
+      "AUD/USD": 0.6550,
+      "USD/CAD": 1.3550,
+      // Crypto
       "BTC/USD": 97500,
       "ETH/USD": 3450,
+      "BNB/USD": 680,
+      "XRP/USD": 2.35,
+      "SOL/USD": 185,
+      "ADA/USD": 0.95,
+      "DOGE/USD": 0.32,
+      // Actions
       "AAPL": 185,
       "TSLA": 178,
       "MSFT": 415,
       "GOOGL": 175,
+      "AMZN": 185,
+      "META": 580,
+      "NVDA": 875,
     };
     
     const estimatedPrice = estimatedPrices[symbol] || 100;

@@ -20,14 +20,26 @@ import {
 import { Brain, Loader2 } from "lucide-react";
 
 const ASSETS = [
-  { value: "EUR/USD", label: "EUR/USD (Forex)" },
-  { value: "GBP/USD", label: "GBP/USD (Forex)" },
+  // Crypto (données en temps réel via CoinGecko - gratuit)
   { value: "BTC/USD", label: "Bitcoin (Crypto)" },
   { value: "ETH/USD", label: "Ethereum (Crypto)" },
+  { value: "BNB/USD", label: "Binance Coin (Crypto)" },
+  { value: "XRP/USD", label: "Ripple XRP (Crypto)" },
+  { value: "SOL/USD", label: "Solana (Crypto)" },
+  { value: "ADA/USD", label: "Cardano (Crypto)" },
+  { value: "DOGE/USD", label: "Dogecoin (Crypto)" },
+  // Forex (données en temps réel via ExchangeRate-API - gratuit)
+  { value: "EUR/USD", label: "EUR/USD (Forex)" },
+  { value: "GBP/USD", label: "GBP/USD (Forex)" },
+  { value: "USD/JPY", label: "USD/JPY (Forex)" },
+  { value: "AUD/USD", label: "AUD/USD (Forex)" },
+  // Actions (prix estimés)
   { value: "AAPL", label: "Apple (Stock)" },
   { value: "TSLA", label: "Tesla (Stock)" },
   { value: "MSFT", label: "Microsoft (Stock)" },
   { value: "GOOGL", label: "Google (Stock)" },
+  { value: "NVDA", label: "Nvidia (Stock)" },
+  { value: "META", label: "Meta (Stock)" },
 ];
 
 export function InstantSignalDialog() {
