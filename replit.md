@@ -1,12 +1,19 @@
-# AlphaSignals - Trading Signals Platform
+# AlphaSignals PRO - Trading Signals Platform
 
 ## Overview
 
-AlphaSignals is a real-time trading signals platform that provides users with curated forex and cryptocurrency trading signals. The application features user authentication via Replit Auth, market data integration through Alpha Vantage API, and a modern dashboard for viewing and managing trading signals with entry/exit points, risk management levels, and performance tracking.
+AlphaSignals PRO is a professional-grade real-time trading signals platform powered by advanced AI (GPT-4o). It provides institutional-level forex and cryptocurrency trading signals with Smart Money Concepts analysis, multi-timeframe confluence, and professional risk management. The application features Replit Auth authentication, multiple free market data APIs, and a modern, professional dashboard.
+
+## Recent Changes (February 2026)
+
+- **AI System Upgrade**: Enhanced AI prompts with institutional-grade analysis methodology including Smart Money Concepts (Order Blocks, Fair Value Gaps, Liquidity Sweeps)
+- **Professional UI Redesign**: Complete Landing page and Dashboard redesign with gradient backgrounds, animated elements, and premium styling
+- **French Localization**: UI text translated to French for better user experience
+- **Stats Display**: Added real-time stats (active signals, win rate) in Dashboard header
 
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+Preferred communication style: Simple, everyday language (French preferred).
 
 ## System Architecture
 
