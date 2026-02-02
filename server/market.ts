@@ -1,5 +1,6 @@
 import axios from "axios";
 import { storage } from "./storage";
+import { generateAIAnalysis } from "./ai";
 
 const ALPHA_VANTAGE_KEY = process.env.ALPHA_VANTAGE_API_KEY;
 const BASE_URL = "https://www.alphavantage.co/query";
@@ -176,6 +177,10 @@ async function processScalpingSignal(symbol: string, data: any, rsiData: any, ma
     const hasActive = existingSignals.some(s => s.pair === symbol && s.status === "ACTIVE");
     
     if (!hasActive) {
+      // Obtenir l'analyse IA avant de créer le signal
+      const aiAnalysis = await generateAIAnalysis(symbol, price, rsi, macd, sma);
+      const finalAnalysis = aiAnalysis ? `[IA] ${aiAnalysis}` : analysis;
+
       await storage.createSignal({
         pair: symbol,
         direction: direction,
@@ -183,10 +188,10 @@ async function processScalpingSignal(symbol: string, data: any, rsiData: any, ma
         stopLoss: direction === "BUY" ? (price * 0.998).toFixed(4) : (price * 1.002).toFixed(4),
         takeProfit: direction === "BUY" ? (price * 1.005).toFixed(4) : (price * 0.995).toFixed(4),
         status: "ACTIVE",
-        analysis: analysis,
+        analysis: finalAnalysis,
         isPremium: true
       });
-      console.log(`[SCALPING SIGNAL] ${symbol}: ${direction} at ${data.price}`);
+      console.log(`[AI SCALPING SIGNAL] ${symbol}: ${direction} at ${data.price}`);
     }
   }
 }
