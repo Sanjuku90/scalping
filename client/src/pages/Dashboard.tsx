@@ -1,7 +1,6 @@
 import { useSignals } from "@/hooks/use-signals";
 import { SignalCard } from "@/components/SignalCard";
 import { InstantSignalDialog } from "@/components/InstantSignalDialog";
-import { StatsChart } from "@/components/StatsChart";
 import { Navbar } from "@/components/Navbar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TradingViewMiniChart } from "@/components/TradingViewWidget";
@@ -57,15 +56,6 @@ export default function Dashboard() {
             <InstantSignalDialog />
           </div>
         </div>
-
-        {/* Stats Section */}
-        <section>
-          {isLoading ? (
-            <Skeleton className="w-full h-[300px] rounded-xl bg-card" />
-          ) : (
-            <StatsChart signals={signals || []} />
-          )}
-        </section>
 
         {/* Active Signals Grid */}
         <section className="space-y-4">
