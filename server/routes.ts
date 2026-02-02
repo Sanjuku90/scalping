@@ -18,9 +18,9 @@ export async function registerRoutes(
   // Instant AI Signal request
   app.post("/api/signals/instant", isAuthenticated, async (req, res) => {
     try {
-      const { symbol } = req.body;
+      const { symbol, style } = req.body;
       if (!symbol) return res.status(400).json({ message: "Symbole requis" });
-      const signal = await generateInstantSignal(symbol);
+      const signal = await generateInstantSignal(symbol, style || "DAILY");
       res.json(signal);
     } catch (err: any) {
       res.status(500).json({ message: err.message || "Erreur lors de la génération du signal" });

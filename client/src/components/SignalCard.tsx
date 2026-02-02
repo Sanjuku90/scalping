@@ -41,7 +41,12 @@ export function SignalCard({ signal }: SignalCardProps) {
                 )}
               </div>
               <div>
-                <h3 className="text-lg font-bold font-display tracking-tight text-white">{signal.pair}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold font-display tracking-tight text-white">{signal.pair}</h3>
+                  <Badge variant="secondary" className="text-[10px] py-0 h-4 px-1.5 opacity-80">
+                    {signal.style}
+                  </Badge>
+                </div>
                 <p className="text-xs text-muted-foreground font-mono">
                   {formatDistanceToNow(new Date(signal.createdAt!), { addSuffix: true })}
                 </p>

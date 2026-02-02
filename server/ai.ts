@@ -134,74 +134,68 @@ export async function generateAIAnalysis(
   price: number, 
   rsi: number | null, 
   macd: number | null, 
-  sma: number | null
+  sma: number | null,
+  style: "SCALPING" | "DAILY" | "SWING" = "DAILY"
 ): Promise<AIAnalysisResult | null> {
   try {
-    const prompt = `🔍 ANALYSE SCALPING PROFESSIONNELLE - ${symbol}
+    const stylePrompts = {
+      SCALPING: "Analyse ultra-courte durée (1-15 min), haute précision, petits mouvements.",
+      DAILY: "Analyse intraday (quelques heures à une journée), basée sur les structures de session.",
+      SWING: "Analyse moyen terme (quelques jours), basée sur les tendances majeures et niveaux institutionnels."
+    };
+
+    const prompt = `🔍 ANALYSE DE TRADING PROFESSIONNELLE (${style}) - ${symbol}
 
 📊 DONNÉES DE MARCHÉ EN TEMPS RÉEL:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 • Actif: ${symbol}
+• Style: ${style} (${stylePrompts[style]})
 • Prix actuel: ${price}
-• RSI (1min): ${rsi !== null ? rsi.toFixed(2) : 'Non disponible'}
-• MACD (1min): ${macd !== null ? macd.toFixed(6) : 'Non disponible'}
-• SMA (1min): ${sma !== null ? sma.toFixed(4) : 'Non disponible'}
+• RSI: ${rsi !== null ? rsi.toFixed(2) : 'Non disponible'}
+• MACD: ${macd !== null ? macd.toFixed(6) : 'Non disponible'}
+• SMA: ${sma !== null ? sma.toFixed(4) : 'Non disponible'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🎯 MISSION: Génère une analyse de scalping institutionnelle complète.
+🎯 MISSION: Génère une analyse institutionnelle complète adaptée au style ${style}.
 
 📋 ANALYSE REQUISE:
-1. Évalue la micro-tendance actuelle
-2. Identifie les niveaux de support/résistance immédiats
-3. Calcule la zone d'entrée optimale
-4. Définis des SL/TP ultra-précis pour scalping
-5. Estime la probabilité de succès
-
-⚠️ CONTRAINTES SCALPING:
-- Stop loss max: 0.5% du prix
-- Take profit: 0.3% à 1% du prix
-- Durée estimée: 2-15 minutes
+1. Évalue la structure de marché adaptée au style ${style}
+2. Identifie les zones de liquidité et niveaux clés
+3. Calcule l'entrée, SL et TP avec une précision chirurgicale basée sur de VRAIES données
+4. Justifie avec au moins 3 confluences techniques
 
 Réponds UNIQUEMENT au format JSON:
 {
   "shouldSignal": true,
   "direction": "BUY" ou "SELL",
   "confidence": "HIGH" | "MEDIUM" | "LOW",
-  "analysis": "Synthèse professionnelle de l'opportunité (2-3 phrases)",
-  "technicalReasoning": "Justification technique détaillée",
-  "stopLoss": "Niveau exact avec 4 décimales",
+  "analysis": "Synthèse professionnelle (2-3 phrases)",
+  "technicalReasoning": "Justification détaillée",
+  "stopLoss": "Niveau exact",
   "takeProfit": "Niveau principal",
   "takeProfitLevels": {
-    "tp1": "Premier objectif (50% position)",
-    "tp2": "Deuxième objectif (30% position)",
-    "tp3": "Extension (20% position)"
+    "tp1": "TP1",
+    "tp2": "TP2",
+    "tp3": "TP3"
   },
-  "riskReward": "Ratio R:R calculé",
-  "winProbability": "Probabilité estimée en %",
-  "marketContext": "Contexte actuel du marché",
-  "entryZone": "Zone d'entrée recommandée",
-  "keyLevels": {
-    "support": "Support immédiat",
-    "resistance": "Résistance immédiate"
-  },
-  "timeframe": "Durée estimée du trade"
+  "riskReward": "Ratio R:R",
+  "winProbability": "en %",
+  "marketContext": "Contexte actuel",
+  "entryZone": "Zone d'entrée",
+  "timeframe": "Durée estimée"
 }`;
 
     const client = getOpenAIClient();
-    if (!client) {
-      console.log("[QUANTUM AI] OpenAI non configuré - analyse indisponible");
-      return null;
-    }
+    if (!client) return null;
     
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: SCALPING_SYSTEM_PROMPT }, 
+        { role: "system", content: PROFESSIONAL_SYSTEM_PROMPT }, 
         { role: "user", content: prompt }
       ],
       response_format: { type: "json_object" },
-      temperature: 0.3, // Plus conservateur pour la précision
-      max_tokens: 1000,
+      temperature: 0.2,
     });
 
     const content = response.choices[0].message.content;

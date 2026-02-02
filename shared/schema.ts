@@ -19,6 +19,8 @@ export const signals = pgTable("signals", {
   createdAt: timestamp("created_at").defaultNow(),
   closedAt: timestamp("closed_at"),
   resultPips: numeric("result_pips"), // Profit/Loss in pips
+  style: text("style", { enum: ["SCALPING", "DAILY", "SWING"] }).default("DAILY").notNull(),
+  category: text("category", { enum: ["CRYPTO", "FOREX", "STOCKS"] }).default("FOREX").notNull(),
 });
 
 export const marketData = pgTable("market_data", {

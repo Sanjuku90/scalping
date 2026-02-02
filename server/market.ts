@@ -218,8 +218,8 @@ async function getAssetPrice(symbol: string): Promise<{ price: string; change24h
   return null;
 }
 
-export async function generateInstantSignal(symbol: string) {
-  console.log(`[INSTANT AI ANALYSIS] Generating signal for ${symbol}...`);
+export async function generateInstantSignal(symbol: string, style: "SCALPING" | "DAILY" | "SWING" = "DAILY") {
+  console.log(`[INSTANT AI ANALYSIS] Generating ${style} signal for ${symbol}...`);
   
   // Try to get real price data
   let priceData = await getAssetPrice(symbol);
@@ -228,31 +228,9 @@ export async function generateInstantSignal(symbol: string) {
   if (!priceData) {
     console.log(`[INSTANT AI] No API data available, using AI knowledge for ${symbol}`);
     
-    // Prix estimés par défaut pour tous les actifs supportés
     const estimatedPrices: Record<string, number> = {
-      // Forex
-      "EUR/USD": 1.0850,
-      "GBP/USD": 1.2650,
-      "USD/JPY": 149.50,
-      "USD/CHF": 0.8850,
-      "AUD/USD": 0.6550,
-      "USD/CAD": 1.3550,
-      // Crypto
-      "BTC/USD": 97500,
-      "ETH/USD": 3450,
-      "BNB/USD": 680,
-      "XRP/USD": 2.35,
-      "SOL/USD": 185,
-      "ADA/USD": 0.95,
-      "DOGE/USD": 0.32,
-      // Actions
-      "AAPL": 185,
-      "TSLA": 178,
-      "MSFT": 415,
-      "GOOGL": 175,
-      "AMZN": 185,
-      "META": 580,
-      "NVDA": 875,
+      "EUR/USD": 1.0850, "GBP/USD": 1.2650, "USD/JPY": 149.50,
+      "BTC/USD": 97500, "ETH/USD": 3450, "SOL/USD": 185
     };
     
     const estimatedPrice = estimatedPrices[symbol] || 100;
@@ -260,20 +238,23 @@ export async function generateInstantSignal(symbol: string) {
   }
 
   const price = parseFloat(priceData.price);
+  const category = (symbol.includes("BTC") || symbol.includes("ETH") || symbol.includes("SOL")) ? "CRYPTO" : "FOREX";
   
-  // Use the new AI function that ALWAYS generates a signal
-  const aiDecision = await generateInstantAISignal(symbol, price, priceData);
+  const aiDecision = await generateAIAnalysis(symbol, price, null, null, null, style);
 
-  // AI always returns a decision, create the signal
+  if (!aiDecision) throw new Error("Erreur lors de l'analyse IA");
+
   const signal = await storage.createSignal({
     pair: symbol,
     direction: aiDecision.direction,
     entryPrice: priceData.price,
-    stopLoss: aiDecision.stopLoss || (aiDecision.direction === "BUY" ? (price * 0.995).toFixed(4) : (price * 1.005).toFixed(4)),
-    takeProfit: aiDecision.takeProfit || (aiDecision.direction === "BUY" ? (price * 1.015).toFixed(4) : (price * 0.985).toFixed(4)),
+    stopLoss: aiDecision.stopLoss,
+    takeProfit: aiDecision.takeProfit,
     status: "ACTIVE",
-    analysis: `[IA INSTANT] ${aiDecision.analysis} | Confiance: ${aiDecision.confidence || 'MEDIUM'}`,
-    isPremium: true
+    analysis: `[IA ${style}] ${aiDecision.analysis}`,
+    isPremium: true,
+    style: style,
+    category: category
   });
 
   return signal;

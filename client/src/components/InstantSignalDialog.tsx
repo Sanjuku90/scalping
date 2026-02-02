@@ -19,45 +19,57 @@ import {
 } from "@/components/ui/select";
 import { Brain, Loader2 } from "lucide-react";
 
-const ASSETS = [
-  // Crypto (données en temps réel via CoinGecko - gratuit)
-  { value: "BTC/USD", label: "Bitcoin (Crypto)" },
-  { value: "ETH/USD", label: "Ethereum (Crypto)" },
-  { value: "BNB/USD", label: "Binance Coin (Crypto)" },
-  { value: "XRP/USD", label: "Ripple XRP (Crypto)" },
-  { value: "SOL/USD", label: "Solana (Crypto)" },
-  { value: "ADA/USD", label: "Cardano (Crypto)" },
-  { value: "DOGE/USD", label: "Dogecoin (Crypto)" },
-  // Forex (données en temps réel via ExchangeRate-API - gratuit)
-  { value: "EUR/USD", label: "EUR/USD (Forex)" },
-  { value: "GBP/USD", label: "GBP/USD (Forex)" },
-  { value: "USD/JPY", label: "USD/JPY (Forex)" },
-  { value: "AUD/USD", label: "AUD/USD (Forex)" },
-  // Actions (prix estimés)
-  { value: "AAPL", label: "Apple (Stock)" },
-  { value: "TSLA", label: "Tesla (Stock)" },
-  { value: "MSFT", label: "Microsoft (Stock)" },
-  { value: "GOOGL", label: "Google (Stock)" },
-  { value: "NVDA", label: "Nvidia (Stock)" },
-  { value: "META", label: "Meta (Stock)" },
+const ASSETS = {
+  CRYPTO: [
+    { value: "BTC/USD", label: "Bitcoin" },
+    { value: "ETH/USD", label: "Ethereum" },
+    { value: "BNB/USD", label: "Binance Coin" },
+    { value: "XRP/USD", label: "Ripple XRP" },
+    { value: "SOL/USD", label: "Solana" },
+    { value: "ADA/USD", label: "Cardano" },
+    { value: "DOGE/USD", label: "Dogecoin" },
+  ],
+  FOREX: [
+    { value: "EUR/USD", label: "EUR/USD" },
+    { value: "GBP/USD", label: "GBP/USD" },
+    { value: "USD/JPY", label: "USD/JPY" },
+    { value: "AUD/USD", label: "AUD/USD" },
+    { value: "USD/CHF", label: "USD/CHF" },
+    { value: "USD/CAD", label: "USD/CAD" },
+  ],
+  STOCKS: [
+    { value: "AAPL", label: "Apple" },
+    { value: "TSLA", label: "Tesla" },
+    { value: "MSFT", label: "Microsoft" },
+    { value: "GOOGL", label: "Google" },
+    { value: "NVDA", label: "Nvidia" },
+    { value: "META", label: "Meta" },
+  ]
+};
+
+const STYLES = [
+  { value: "SCALPING", label: "Scalping (1-15 min)" },
+  { value: "DAILY", label: "Daily (Intraday)" },
+  { value: "SWING", label: "Swing (Plusieurs jours)" },
 ];
 
 export function InstantSignalDialog() {
   const [open, setOpen] = useState(false);
   const [symbol, setSymbol] = useState("");
+  const [style, setStyle] = useState("DAILY");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (symbol: string) => {
-      const res = await apiRequest("POST", "/api/signals/instant", { symbol });
+    mutationFn: async (data: { symbol: string, style: string }) => {
+      const res = await apiRequest("POST", "/api/signals/instant", data);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/signals"] });
       toast({
         title: "Signal Généré",
-        description: "L'IA a terminé son analyse et a trouvé une position.",
+        description: `L'IA a terminé son analyse ${style.toLowerCase()} et a trouvé une position.`,
       });
       setOpen(false);
     },
@@ -84,13 +96,42 @@ export function InstantSignalDialog() {
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Choisir un actif</label>
+            <label className="text-sm font-medium">Technique de Trading</label>
+            <Select onValueChange={setStyle} value={style}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choisir un style..." />
+              </SelectTrigger>
+              <SelectContent>
+                {STYLES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Actif financier</label>
             <Select onValueChange={setSymbol} value={symbol}>
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner un actif..." />
               </SelectTrigger>
               <SelectContent>
-                {ASSETS.map((asset) => (
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">Crypto</div>
+                {ASSETS.CRYPTO.map((asset) => (
+                  <SelectItem key={asset.value} value={asset.value}>
+                    {asset.label}
+                  </SelectItem>
+                ))}
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase mt-2">Forex</div>
+                {ASSETS.FOREX.map((asset) => (
+                  <SelectItem key={asset.value} value={asset.value}>
+                    {asset.label}
+                  </SelectItem>
+                ))}
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase mt-2">Actions</div>
+                {ASSETS.STOCKS.map((asset) => (
                   <SelectItem key={asset.value} value={asset.value}>
                     {asset.label}
                   </SelectItem>
@@ -98,18 +139,19 @@ export function InstantSignalDialog() {
               </SelectContent>
             </Select>
           </div>
+
           <Button
-            onClick={() => mutation.mutate(symbol)}
-            disabled={!symbol || mutation.isPending}
+            onClick={() => mutation.mutate({ symbol, style })}
+            disabled={!symbol || !style || mutation.isPending}
             className="w-full mt-2"
           >
             {mutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analyse en cours...
+                Analyse IA en cours...
               </>
             ) : (
-              "Lancer l'Analyse Scalping"
+              "Lancer l'Analyse Elite"
             )}
           </Button>
         </div>
