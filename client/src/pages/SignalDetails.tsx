@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
+import { TradingViewWidget } from "@/components/TradingViewWidget";
+
 export default function SignalDetails() {
   const [match, params] = useRoute("/signals/:id");
   const id = parseInt(params?.id || "0");
@@ -143,28 +145,15 @@ export default function SignalDetails() {
            </Card>
         </div>
 
-        {/* Result Input (Admin) */}
-        {signal.status !== "ACTIVE" && (
-           <Card className="border-border">
-             <CardHeader>
-               <CardTitle className="text-lg">Result Management</CardTitle>
-             </CardHeader>
-             <CardContent className="flex gap-4 items-end">
-               <div className="w-full max-w-xs space-y-2">
-                 <label className="text-sm font-medium">Profit/Loss (Pips)</label>
-                 <Input 
-                   type="number" 
-                   placeholder="+50 or -20" 
-                   defaultValue={signal.resultPips || ""}
-                   onChange={(e) => setResultPips(e.target.value)}
-                 />
-               </div>
-               <Button onClick={handleResultSave}>
-                 <Save className="w-4 h-4 mr-2" /> Save Result
-               </Button>
-             </CardContent>
-           </Card>
-        )}
+        {/* TradingView Chart */}
+        <Card className="border-border bg-card overflow-hidden">
+          <CardHeader>
+            <CardTitle>TradingView Live Analysis</CardTitle>
+          </CardHeader>
+          <div className="h-[500px] w-full bg-black/50">
+            <TradingViewWidget symbol={signal.pair} />
+          </div>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
            <div className="lg:col-span-2 space-y-6">
@@ -181,22 +170,6 @@ export default function SignalDetails() {
                  </p>
                </CardContent>
              </Card>
-
-             {/* Chart Image */}
-             {signal.imageUrl && (
-               <Card className="border-border bg-card overflow-hidden">
-                 <CardHeader>
-                   <CardTitle>Chart Analysis</CardTitle>
-                 </CardHeader>
-                 <div className="relative aspect-video w-full bg-black/50">
-                    <img 
-                      src={signal.imageUrl} 
-                      alt={`Analysis for ${signal.pair}`}
-                      className="w-full h-full object-contain"
-                    />
-                 </div>
-               </Card>
-             )}
            </div>
 
            <div className="space-y-6">
@@ -214,7 +187,6 @@ export default function SignalDetails() {
               </Card>
            </div>
         </div>
-
       </main>
     </div>
   );

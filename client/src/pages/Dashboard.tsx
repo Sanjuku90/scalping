@@ -4,7 +4,7 @@ import { CreateSignalDialog } from "@/components/CreateSignalDialog";
 import { StatsChart } from "@/components/StatsChart";
 import { Navbar } from "@/components/Navbar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { motion } from "framer-motion";
+import { TradingViewMiniChart } from "@/components/TradingViewWidget";
 
 export default function Dashboard() {
   const { data: signals, isLoading } = useSignals();
@@ -19,6 +19,11 @@ export default function Dashboard() {
       
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
+        {/* TradingView Ticker Tape */}
+        <div className="w-full overflow-hidden rounded-lg bg-card border border-border">
+          <TradingViewMiniChart symbol="EURUSD" />
+        </div>
+
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
