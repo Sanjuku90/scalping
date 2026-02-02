@@ -3,7 +3,9 @@ import {
   signals,
   type Signal,
   type InsertSignal,
-  type UpdateSignalRequest
+  type UpdateSignalRequest,
+  marketData,
+  type MarketData
 } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import { authStorage, type IAuthStorage } from "./replit_integrations/auth/storage";
@@ -14,6 +16,11 @@ export interface IStorage extends IAuthStorage {
   createSignal(signal: InsertSignal): Promise<Signal>;
   updateSignal(id: number, updates: UpdateSignalRequest): Promise<Signal>;
   deleteSignal(id: number): Promise<void>;
+  
+  // Market Data
+  getMarketData(symbol: string): Promise<MarketData | undefined>;
+  updateMarketData(data: Omit<MarketData, "id" | "updatedAt">): Promise<MarketData>;
+  getAllMarketData(): Promise<MarketData[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -46,6 +53,32 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSignal(id: number): Promise<void> {
     await db.delete(signals).where(eq(signals.id, id));
+  }
+
+  async getMarketData(symbol: string): Promise<MarketData | undefined> {
+    const [data] = await db.select().from(marketData).where(eq(marketData.symbol, symbol));
+    return data;
+  }
+
+  async updateMarketData(data: Omit<MarketData, "id" | "updatedAt">): Promise<MarketData> {
+    const [updated] = await db
+      .insert(marketData)
+      .values(data)
+      .onConflictDoUpdate({
+        target: marketData.symbol,
+        set: {
+          price: data.price,
+          change: data.change,
+          changePercent: data.changePercent,
+          updatedAt: new Date(),
+        }
+      })
+      .returning();
+    return updated;
+  }
+
+  async getAllMarketData(): Promise<MarketData[]> {
+    return await db.select().from(marketData);
   }
 }
 

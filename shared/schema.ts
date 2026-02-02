@@ -21,6 +21,15 @@ export const signals = pgTable("signals", {
   resultPips: numeric("result_pips"), // Profit/Loss in pips
 });
 
+export const marketData = pgTable("market_data", {
+  id: serial("id").primaryKey(),
+  symbol: text("symbol").notNull(),
+  price: numeric("price").notNull(),
+  change: numeric("change"),
+  changePercent: text("change_percent"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertSignalSchema = createInsertSchema(signals).omit({ 
   id: true, 
   createdAt: true, 
@@ -30,6 +39,7 @@ export const insertSignalSchema = createInsertSchema(signals).omit({
 
 export type Signal = typeof signals.$inferSelect;
 export type InsertSignal = z.infer<typeof insertSignalSchema>;
+export type MarketData = typeof marketData.$inferSelect;
 
 export type CreateSignalRequest = InsertSignal;
 export type UpdateSignalRequest = Partial<InsertSignal>;

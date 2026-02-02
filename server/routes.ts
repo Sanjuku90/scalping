@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { fetchMarketPrice, generateSignals } from "./market";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -14,9 +15,18 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
-  // Protect all signal routes with authentication
-  // For a real app, you might want to allow public access to list but restricted details,
-  // but for "Trading Signals" usually it's members only.
+  // Market Data endpoint
+  app.get("/api/market/:symbol", isAuthenticated, async (req, res) => {
+    const data = await fetchMarketPrice(req.params.symbol);
+    if (!data) return res.status(404).json({ message: "Data not found" });
+    res.json(data);
+  });
+
+  // Manual trigger for signal generation (Admin/System only in real world)
+  app.post("/api/admin/generate-signals", isAuthenticated, async (req, res) => {
+    await generateSignals();
+    res.json({ message: "Signals generated based on real market data" });
+  });
   
   // List signals
   app.get(api.signals.list.path, isAuthenticated, async (req, res) => {
@@ -33,7 +43,7 @@ export async function registerRoutes(
     res.json(signal);
   });
 
-  // Create signal (In a real app, restrict this to Admin only)
+  // Create signal
   app.post(api.signals.create.path, isAuthenticated, async (req, res) => {
     try {
       const input = api.signals.create.input.parse(req.body);
@@ -76,49 +86,8 @@ export async function registerRoutes(
     res.status(204).end();
   });
 
-  // Seed data function
-  await seedDatabase();
+  // Initial trigger
+  generateSignals().catch(console.error);
 
   return httpServer;
-}
-
-async function seedDatabase() {
-  const existing = await storage.getSignals();
-  if (existing.length === 0) {
-    console.log("Seeding database with initial signals...");
-    
-    await storage.createSignal({
-      pair: "BTC/USD",
-      direction: "BUY",
-      entryPrice: "42500.00",
-      stopLoss: "41000.00",
-      takeProfit: "45000.00",
-      status: "ACTIVE",
-      analysis: "Bitcoin is forming a strong support base at 42k. Bullish divergence on RSI suggests a reversal.",
-      imageUrl: "https://s3.tradingview.com/snapshots/b/BtcUsdChart_placeholder.png",
-      isPremium: true
-    });
-
-    await storage.createSignal({
-      pair: "EUR/USD",
-      direction: "SELL",
-      entryPrice: "1.0950",
-      stopLoss: "1.1020",
-      takeProfit: "1.0800",
-      status: "ACTIVE",
-      analysis: "Euro facing resistance at key fibonacci level. Expecting a pullback to test lower support.",
-      isPremium: false
-    });
-
-    await storage.createSignal({
-      pair: "GOLD (XAU/USD)",
-      direction: "BUY",
-      entryPrice: "2030.50",
-      stopLoss: "2015.00",
-      takeProfit: "2060.00",
-      status: "HIT_TP",
-      analysis: "Gold broke out of the consolidation channel. Target hit successfully.",
-      isPremium: true
-    });
-  }
 }
