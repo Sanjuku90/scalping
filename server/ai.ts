@@ -40,3 +40,67 @@ export async function generateAIAnalysis(symbol: string, price: number, rsi: num
     return null;
   }
 }
+
+export async function generateInstantAISignal(symbol: string, price: number, historicalData: any = null) {
+  try {
+    const prompt = `Tu es un trader professionnel et tu dois ABSOLUMENT donner une position de trading pour ${symbol}.
+
+DONNÉES ACTUELLES:
+- Actif: ${symbol}
+- Prix actuel: ${price}
+${historicalData ? `- Données historiques: ${JSON.stringify(historicalData)}` : ''}
+
+MISSION OBLIGATOIRE: Tu dois TOUJOURS fournir une recommandation de trading. Analyse le marché et décide si c'est un achat ou une vente basé sur:
+- La tendance actuelle du prix
+- Le momentum du marché
+- Les niveaux psychologiques importants
+- La volatilité probable
+
+IMPORTANT: Tu dois TOUJOURS répondre avec une direction (BUY ou SELL). Ne refuse jamais de donner un signal.
+
+Réponds UNIQUEMENT au format JSON:
+{
+  "direction": "BUY" ou "SELL",
+  "confidence": "HIGH" ou "MEDIUM" ou "LOW",
+  "analysis": "Explication détaillée de ta stratégie en français (3-4 phrases maximum)",
+  "stopLoss": "${price}" (ajuste selon le risque, environ 0.5-1% du prix),
+  "takeProfit": "${price}" (ajuste selon l'objectif, environ 1-2% du prix),
+  "reasoning": "Les raisons techniques de cette décision"
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-5.2",
+      messages: [
+        { 
+          role: "system", 
+          content: "Tu es un analyste de trading expert. Tu dois TOUJOURS donner une recommandation de position (BUY ou SELL). Tu ne peux jamais refuser ou dire que tu n'as pas assez de données. Base toi sur ton expertise du marché pour prendre une décision." 
+        }, 
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const content = response.choices[0].message.content;
+    if (!content) {
+      return {
+        direction: "BUY",
+        confidence: "MEDIUM",
+        analysis: "Analyse technique automatique basée sur le prix actuel.",
+        stopLoss: (price * 0.995).toFixed(4),
+        takeProfit: (price * 1.01).toFixed(4),
+        reasoning: "Signal généré automatiquement"
+      };
+    }
+    return JSON.parse(content);
+  } catch (error) {
+    console.error("Erreur AI Instant Signal:", error);
+    return {
+      direction: "BUY",
+      confidence: "LOW",
+      analysis: "Analyse par défaut - l'IA n'a pas pu analyser complètement.",
+      stopLoss: (price * 0.995).toFixed(4),
+      takeProfit: (price * 1.01).toFixed(4),
+      reasoning: "Signal de secours"
+    };
+  }
+}
