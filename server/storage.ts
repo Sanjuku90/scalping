@@ -1,38 +1,52 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { db } from "./db";
+import {
+  signals,
+  type Signal,
+  type InsertSignal,
+  type UpdateSignalRequest
+} from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
+import { authStorage, type IAuthStorage } from "./replit_integrations/auth/storage";
 
-// modify the interface with any CRUD methods
-// you might need
-
-export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+export interface IStorage extends IAuthStorage {
+  getSignals(): Promise<Signal[]>;
+  getSignal(id: number): Promise<Signal | undefined>;
+  createSignal(signal: InsertSignal): Promise<Signal>;
+  updateSignal(id: number, updates: UpdateSignalRequest): Promise<Signal>;
+  deleteSignal(id: number): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+export class DatabaseStorage implements IStorage {
+  // Auth storage delegation
+  getUser = authStorage.getUser;
+  upsertUser = authStorage.upsertUser;
 
-  constructor() {
-    this.users = new Map();
+  async getSignals(): Promise<Signal[]> {
+    return await db.select().from(signals).orderBy(desc(signals.createdAt));
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getSignal(id: number): Promise<Signal | undefined> {
+    const [signal] = await db.select().from(signals).where(eq(signals.id, id));
+    return signal;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async createSignal(insertSignal: InsertSignal): Promise<Signal> {
+    const [signal] = await db.insert(signals).values(insertSignal).returning();
+    return signal;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async updateSignal(id: number, updates: UpdateSignalRequest): Promise<Signal> {
+    const [updated] = await db
+      .update(signals)
+      .set(updates)
+      .where(eq(signals.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSignal(id: number): Promise<void> {
+    await db.delete(signals).where(eq(signals.id, id));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
