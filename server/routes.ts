@@ -17,7 +17,8 @@ export async function registerRoutes(
 
   // Market Data endpoint
   app.get("/api/market/:symbol", isAuthenticated, async (req, res) => {
-    const data = await fetchMarketPrice(req.params.symbol);
+    const symbol = String(req.params.symbol);
+    const data = await fetchMarketPrice(symbol);
     if (!data) return res.status(404).json({ message: "Data not found" });
     res.json(data);
   });
