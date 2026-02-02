@@ -5,50 +5,62 @@ import { Navbar } from "@/components/Navbar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TradingViewMiniChart } from "@/components/TradingViewWidget";
 import { Activity, TrendingUp, Zap, Clock, BarChart3 } from "lucide-react";
+import { useMemo, memo } from "react";
+
+const SignalSection = memo(({ title, signals, icon: Icon, colorClass }: any) => (
+  <section className="space-y-4">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className={`p-1.5 rounded-lg ${colorClass}/10 border border-${colorClass}/20`}>
+          <Icon className={`w-4 h-4 ${colorClass}`} />
+        </div>
+        <h2 className="text-xl font-bold font-display text-white">{title}</h2>
+        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}/10 ${colorClass} border border-${colorClass}/20`}>
+          {signals.length}
+        </span>
+      </div>
+    </div>
+    
+    {signals.length > 0 ? (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {signals.map((signal: any) => (
+          <SignalCard key={signal.id} signal={signal} />
+        ))}
+      </div>
+    ) : (
+      <div className="py-8 text-center border border-dashed border-border/30 rounded-xl bg-card/20">
+        <p className="text-sm text-muted-foreground">Aucun signal {title.toLowerCase()} actif.</p>
+      </div>
+    )}
+  </section>
+));
+
+SignalSection.displayName = "SignalSection";
 
 export default function Dashboard() {
   const { data: signals, isLoading } = useSignals();
 
-  // Separate signals by category and status
-  const activeSignals = signals?.filter(s => s.status === "ACTIVE") || [];
-  const closedSignals = signals?.filter(s => s.status !== "ACTIVE") || [];
-  
-  const cryptoSignals = activeSignals.filter(s => s.category === "CRYPTO");
-  const forexSignals = activeSignals.filter(s => s.category === "FOREX");
-  const otherSignals = activeSignals.filter(s => s.category !== "CRYPTO" && s.category !== "FOREX");
+  // Separate signals by category and status using useMemo
+  const { activeSignals, closedSignals, cryptoSignals, forexSignals, otherSignals } = useMemo(() => {
+    const active = signals?.filter(s => s.status === "ACTIVE") || [];
+    const closed = signals?.filter(s => s.status !== "ACTIVE") || [];
+    
+    return {
+      activeSignals: active,
+      closedSignals: closed,
+      cryptoSignals: active.filter(s => s.category === "CRYPTO"),
+      forexSignals: active.filter(s => s.category === "FOREX"),
+      otherSignals: active.filter(s => s.category !== "CRYPTO" && s.category !== "FOREX")
+    };
+  }, [signals]);
 
-  // Calculate quick stats
-  const totalSignals = signals?.length || 0;
-  const winningSignals = signals?.filter(s => s.status === "HIT_TP")?.length || 0;
-  const winRate = totalSignals > 0 ? Math.round((winningSignals / totalSignals) * 100) : 0;
-
-  const SignalSection = ({ title, signals, icon: Icon, colorClass }: any) => (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`p-1.5 rounded-lg ${colorClass}/10 border border-${colorClass}/20`}>
-            <Icon className={`w-4 h-4 ${colorClass}`} />
-          </div>
-          <h2 className="text-xl font-bold font-display text-white">{title}</h2>
-          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}/10 ${colorClass} border border-${colorClass}/20`}>
-            {signals.length}
-          </span>
-        </div>
-      </div>
-      
-      {signals.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {signals.map((signal: any) => (
-            <SignalCard key={signal.id} signal={signal} />
-          ))}
-        </div>
-      ) : (
-        <div className="py-8 text-center border border-dashed border-border/30 rounded-xl bg-card/20">
-          <p className="text-sm text-muted-foreground">Aucun signal {title.toLowerCase()} actif.</p>
-        </div>
-      )}
-    </section>
-  );
+  // Calculate quick stats with useMemo
+  const { totalSignals, winningSignals, winRate } = useMemo(() => {
+    const total = signals?.length || 0;
+    const winning = signals?.filter(s => s.status === "HIT_TP")?.length || 0;
+    const rate = total > 0 ? Math.round((winning / total) * 100) : 0;
+    return { totalSignals: total, winningSignals: winning, winRate: rate };
+  }, [signals]);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">

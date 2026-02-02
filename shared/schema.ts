@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, numeric, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, numeric, boolean, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -21,7 +21,11 @@ export const signals = pgTable("signals", {
   resultPips: numeric("result_pips"), // Profit/Loss in pips
   style: text("style", { enum: ["SCALPING", "DAILY", "SWING"] }).default("DAILY").notNull(),
   category: text("category", { enum: ["CRYPTO", "FOREX", "STOCKS"] }).default("FOREX").notNull(),
-});
+}, (table) => ({
+  statusIdx: index("signals_status_idx").on(table.status),
+  categoryIdx: index("signals_category_idx").on(table.category),
+  createdAtIdx: index("signals_created_at_idx").on(table.createdAt),
+}));
 
 export const marketData = pgTable("market_data", {
   id: serial("id").primaryKey(),
@@ -30,7 +34,9 @@ export const marketData = pgTable("market_data", {
   change: numeric("change"),
   changePercent: text("change_percent"),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  symbolIdx: index("market_data_symbol_idx").on(table.symbol),
+}));
 
 export const insertSignalSchema = createInsertSchema(signals).omit({ 
   id: true, 
