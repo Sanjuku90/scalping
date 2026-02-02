@@ -23,7 +23,7 @@ export const signals = pgTable("signals", {
 
 export const marketData = pgTable("market_data", {
   id: serial("id").primaryKey(),
-  symbol: text("symbol").notNull(),
+  symbol: text("symbol").notNull().unique(), // Add unique constraint for onConflict
   price: numeric("price").notNull(),
   change: numeric("change"),
   changePercent: text("change_percent"),
