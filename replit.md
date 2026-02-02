@@ -59,9 +59,21 @@ Key tables:
 ## External Dependencies
 
 ### Third-Party APIs
-- **Alpha Vantage**: Market data provider for real-time forex/stock prices
+- **CoinGecko** (FREE, no API key required): Cryptocurrency price data
+  - Supports: BTC, ETH, BNB, XRP, SOL, ADA, DOGE
+  - Used for real-time crypto prices
+
+- **ExchangeRate-API** (FREE, no API key required): Forex exchange rates
+  - Supports: EUR/USD, GBP/USD, and other currency pairs
+  - Used for real-time forex prices
+
+- **Alpha Vantage** (Optional): Market data provider for stock prices
   - Environment variable: `ALPHA_VANTAGE_API_KEY`
-  - Used for fetching live prices and generating signals
+  - Only required for stock trading signals (AAPL, TSLA, etc.)
+
+- **Replit AI Integrations**: OpenAI-compatible API for AI signal generation
+  - No API key required (uses Replit credits)
+  - Powers the instant AI trading analysis
 
 ### Database
 - **PostgreSQL**: Primary database
