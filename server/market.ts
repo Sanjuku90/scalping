@@ -122,10 +122,12 @@ export async function fetchTechnicalIndicator(symbol: string, func: "RSI" | "MAC
 }
 
 export async function generateSignals() {
-  const symbols = ["AAPL", "EUR/USD", "GBP/USD", "TSLA"];
+  // Augmentation de la liste des symboles pour plus d'opportunités
+  const symbols = ["AAPL", "EUR/USD", "GBP/USD", "TSLA", "MSFT", "GOOGL", "BTC/USD", "ETH/USD"];
   
   for (const symbol of symbols) {
-    await new Promise(resolve => setTimeout(resolve, 15000));
+    // Delai réduit pour scanner plus vite (tout en respectant les limites)
+    await new Promise(resolve => setTimeout(resolve, 5000));
     
     let priceData;
     let symbolForTech = symbol.replace("/", "");
@@ -159,16 +161,17 @@ async function processScalpingSignal(symbol: string, data: any, rsiData: any, ma
   let analysis = "";
 
   // Scalping Strategy: RSI + MACD + SMA
-  // BUY: RSI < 40 + MACD > Signal + Price > SMA
-  // SELL: RSI > 60 + MACD < Signal + Price < SMA
-  
+  // On assouplit les conditions pour trouver plus de signaux en scalping
   if (rsi !== null && macd !== null && macdSignal !== null && sma !== null) {
-    if (rsi < 40 && macd > macdSignal && price > sma) {
+    // Condition d'achat : RSI sous 45 (zone de rebond) ET MACD passe au dessus du signal OU prix au dessus de SMA
+    if (rsi < 45 && (macd > macdSignal || price > sma)) {
       direction = "BUY";
-      analysis = `SCALPING RÉEL (15m) : RSI(${rsi.toFixed(2)}) en zone de rebond, MACD croisement haussier et prix au-dessus de la SMA. Signal de scalping haute probabilité.`;
-    } else if (rsi > 60 && macd < macdSignal && price < sma) {
+      analysis = `DÉTECTION SCALPING : RSI(${rsi.toFixed(2)}) montre un momentum positif. Le flux de prix confirme une opportunité d'achat rapide.`;
+    } 
+    // Condition de vente : RSI au dessus de 55 (zone de correction) ET MACD sous le signal OU prix sous SMA
+    else if (rsi > 55 && (macd < macdSignal || price < sma)) {
       direction = "SELL";
-      analysis = `SCALPING RÉEL (15m) : RSI(${rsi.toFixed(2)}) en zone de surachat, MACD croisement baissier et prix sous la SMA. Signal de scalping haute probabilité.`;
+      analysis = `DÉTECTION SCALPING : RSI(${rsi.toFixed(2)}) montre une possible surchauffe. Le flux de prix confirme une opportunité de vente rapide.`;
     }
   }
 
