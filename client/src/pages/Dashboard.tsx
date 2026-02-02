@@ -1,6 +1,6 @@
 import { useSignals } from "@/hooks/use-signals";
 import { SignalCard } from "@/components/SignalCard";
-import { CreateSignalDialog } from "@/components/CreateSignalDialog";
+import { InstantSignalDialog } from "@/components/InstantSignalDialog";
 import { StatsChart } from "@/components/StatsChart";
 import { Navbar } from "@/components/Navbar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,10 +27,10 @@ export default function Dashboard() {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white">Market Overview</h1>
-            <p className="text-muted-foreground mt-1">Real-time trading signals and performance analytics.</p>
+            <h1 className="text-3xl font-display font-bold text-white">Analyse de Marché</h1>
+            <p className="text-muted-foreground mt-1">Signaux de trading en temps réel par IA.</p>
           </div>
-          <CreateSignalDialog />
+          <InstantSignalDialog />
         </div>
 
         {/* Stats Section */}
