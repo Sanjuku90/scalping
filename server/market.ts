@@ -88,9 +88,11 @@ export async function fetchForexPrice(from: string, to: string) {
   }
 }
 
-export async function fetchTechnicalIndicator(symbol: string, func: "RSI" | "MACD" | "SMA", interval: string = "15min") {
+export async function fetchTechnicalIndicator(symbol: string, func: "RSI" | "MACD" | "SMA", interval: string = "1min") {
   const cacheKey = `${func}_${symbol}_${interval}`;
-  if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < CACHE_TTL) return cache[cacheKey].data;
+  // Cache réduit pour le scalping 1min
+  const SCALPING_CACHE_TTL = 60 * 1000; // 1 minute
+  if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < SCALPING_CACHE_TTL) return cache[cacheKey].data;
 
   try {
     const params: any = {
@@ -141,12 +143,35 @@ export async function generateSignals() {
 
     if (!priceData) continue;
 
-    // SCALPING: Use 15min interval for faster signals
-    const rsiData = await fetchTechnicalIndicator(symbolForTech, "RSI", "15min");
-    const macdData = await fetchTechnicalIndicator(symbolForTech, "MACD", "15min");
-    const smaData = await fetchTechnicalIndicator(symbolForTech, "SMA", "15min");
+    // SCALPING TURBO: Use 1min interval for instant signals
+    const rsiData = await fetchTechnicalIndicator(symbolForTech, "RSI", "1min");
+    const macdData = await fetchTechnicalIndicator(symbolForTech, "MACD", "1min");
+    const smaData = await fetchTechnicalIndicator(symbolForTech, "SMA", "1min");
 
     await processScalpingSignal(symbol, priceData, rsiData, macdData, smaData);
+  }
+
+  // Nettoyage automatique des signaux obsolètes
+  await cleanupObsoleteSignals();
+}
+
+async function cleanupObsoleteSignals() {
+  const activeSignals = await storage.getSignals();
+  for (const signal of activeSignals) {
+    if (signal.status !== "ACTIVE") continue;
+
+    // On vérifie si le signal est toujours valable techniquement (intervalle 1min)
+    const symbolForTech = signal.pair.replace("/", "");
+    const rsiData = await fetchTechnicalIndicator(symbolForTech, "RSI", "1min");
+    const rsi = rsiData ? parseFloat(rsiData.RSI) : null;
+
+    if (rsi !== null) {
+      // Si le RSI revient à la normale (entre 45 et 55), le signal n'est plus "urgent" ou valable
+      if ((signal.direction === "BUY" && rsi > 50) || (signal.direction === "SELL" && rsi < 50)) {
+        await storage.updateSignal(signal.id, { status: "CLOSED", analysis: signal.analysis + " [IA: Signal clos car les conditions ne sont plus remplies]" });
+        console.log(`[AUTO-CLEANUP] Signal ${signal.pair} closed (RSI: ${rsi})`);
+      }
+    }
   }
 }
 
