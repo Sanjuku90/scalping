@@ -90,7 +90,6 @@ export async function fetchForexPrice(from: string, to: string) {
 
 export async function fetchTechnicalIndicator(symbol: string, func: "RSI" | "MACD" | "SMA", interval: string = "1min") {
   const cacheKey = `${func}_${symbol}_${interval}`;
-  // Cache réduit pour le scalping 1min
   const SCALPING_CACHE_TTL = 60 * 1000; // 1 minute
   if (cache[cacheKey] && Date.now() - cache[cacheKey].timestamp < SCALPING_CACHE_TTL) return cache[cacheKey].data;
 
@@ -124,12 +123,11 @@ export async function fetchTechnicalIndicator(symbol: string, func: "RSI" | "MAC
 }
 
 export async function generateSignals() {
-  // Augmentation de la liste des symboles pour plus d'opportunités
+  console.log(`[AI SCAN] Scanning markets at ${new Date().toLocaleTimeString()}...`);
   const symbols = ["AAPL", "EUR/USD", "GBP/USD", "TSLA", "MSFT", "GOOGL", "BTC/USD", "ETH/USD"];
   
   for (const symbol of symbols) {
-    // Delai réduit pour scanner plus vite (tout en respectant les limites)
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Faster scanning
     
     let priceData;
     let symbolForTech = symbol.replace("/", "");
@@ -143,7 +141,6 @@ export async function generateSignals() {
 
     if (!priceData) continue;
 
-    // SCALPING TURBO: Use 1min interval for instant signals
     const rsiData = await fetchTechnicalIndicator(symbolForTech, "RSI", "1min");
     const macdData = await fetchTechnicalIndicator(symbolForTech, "MACD", "1min");
     const smaData = await fetchTechnicalIndicator(symbolForTech, "SMA", "1min");
@@ -151,7 +148,6 @@ export async function generateSignals() {
     await processScalpingSignal(symbol, priceData, rsiData, macdData, smaData);
   }
 
-  // Nettoyage automatique des signaux obsolètes
   await cleanupObsoleteSignals();
 }
 
@@ -160,14 +156,12 @@ async function cleanupObsoleteSignals() {
   for (const signal of activeSignals) {
     if (signal.status !== "ACTIVE") continue;
 
-    // On vérifie si le signal est toujours valable techniquement (intervalle 1min)
     const symbolForTech = signal.pair.replace("/", "");
     const rsiData = await fetchTechnicalIndicator(symbolForTech, "RSI", "1min");
     const rsi = rsiData ? parseFloat(rsiData.RSI) : null;
 
     if (rsi !== null) {
-      // Si le RSI revient à la normale (entre 45 et 55), le signal n'est plus "urgent" ou valable
-      if ((signal.direction === "BUY" && rsi > 50) || (signal.direction === "SELL" && rsi < 50)) {
+      if ((signal.direction === "BUY" && rsi > 55) || (signal.direction === "SELL" && rsi < 45)) {
         await storage.updateSignal(signal.id, { status: "CLOSED", analysis: signal.analysis + " [IA: Signal clos car les conditions ne sont plus remplies]" });
         console.log(`[AUTO-CLEANUP] Signal ${signal.pair} closed (RSI: ${rsi})`);
       }
@@ -185,18 +179,13 @@ async function processScalpingSignal(symbol: string, data: any, rsiData: any, ma
   let direction: "BUY" | "SELL" | null = null;
   let analysis = "";
 
-  // Scalping Strategy: RSI + MACD + SMA
-  // On assouplit les conditions pour trouver plus de signaux en scalping
   if (rsi !== null && macd !== null && macdSignal !== null && sma !== null) {
-    // Condition d'achat : RSI sous 45 (zone de rebond) ET MACD passe au dessus du signal OU prix au dessus de SMA
-    if (rsi < 45 && (macd > macdSignal || price > sma)) {
+    if (rsi < 48 && (macd > macdSignal || price > sma)) {
       direction = "BUY";
-      analysis = `DÉTECTION SCALPING : RSI(${rsi.toFixed(2)}) montre un momentum positif. Le flux de prix confirme une opportunité d'achat rapide.`;
-    } 
-    // Condition de vente : RSI au dessus de 55 (zone de correction) ET MACD sous le signal OU prix sous SMA
-    else if (rsi > 55 && (macd < macdSignal || price < sma)) {
+      analysis = `DÉTECTION SCALPING : RSI(${rsi.toFixed(2)}) momentum haussier.`;
+    } else if (rsi > 52 && (macd < macdSignal || price < sma)) {
       direction = "SELL";
-      analysis = `DÉTECTION SCALPING : RSI(${rsi.toFixed(2)}) montre une possible surchauffe. Le flux de prix confirme une opportunité de vente rapide.`;
+      analysis = `DÉTECTION SCALPING : RSI(${rsi.toFixed(2)}) momentum baissier.`;
     }
   }
 
@@ -205,7 +194,6 @@ async function processScalpingSignal(symbol: string, data: any, rsiData: any, ma
     const hasActive = existingSignals.some(s => s.pair === symbol && s.status === "ACTIVE");
     
     if (!hasActive) {
-      // Obtenir l'analyse IA avant de créer le signal
       const aiAnalysis = await generateAIAnalysis(symbol, price, rsi, macd, sma);
       const finalAnalysis = aiAnalysis ? `[IA] ${aiAnalysis}` : analysis;
 
@@ -219,7 +207,7 @@ async function processScalpingSignal(symbol: string, data: any, rsiData: any, ma
         analysis: finalAnalysis,
         isPremium: true
       });
-      console.log(`[AI SCALPING SIGNAL] ${symbol}: ${direction} at ${data.price}`);
+      console.log(`[AI SIGNAL GENERATED] ${symbol}: ${direction} at ${data.price}`);
     }
   }
 }
