@@ -1,19 +1,16 @@
+import { db } from "./db";
 import {
   signals,
   type Signal,
   type InsertSignal,
   type UpdateSignalRequest,
   marketData,
-  type MarketData,
-  type User,
+  type MarketData
 } from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
+import { authStorage, type IAuthStorage } from "./replit_integrations/auth/storage";
 
-export interface IStorage {
-  // Auth
-  getUser(id: number): Promise<User | undefined>;
-  upsertUser(user: any): Promise<User>;
-
-  // Signals
+export interface IStorage extends IAuthStorage {
   getSignals(): Promise<Signal[]>;
   getSignal(id: number): Promise<Signal | undefined>;
   createSignal(signal: InsertSignal): Promise<Signal>;
@@ -26,95 +23,63 @@ export interface IStorage {
   getAllMarketData(): Promise<MarketData[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private signals: Map<number, Signal>;
-  private marketData: Map<string, MarketData>;
-  private currentId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.signals = new Map();
-    this.marketData = new Map();
-    this.currentId = 1;
-  }
-
-  async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async upsertUser(user: any): Promise<User> {
-    const id = Number(user.id);
-    const existing = this.users.get(id);
-    const newUser: User = { 
-      ...user, 
-      id,
-      createdAt: existing?.createdAt || new Date(),
-      updatedAt: new Date()
-    };
-    this.users.set(id, newUser);
-    return newUser;
-  }
+export class DatabaseStorage implements IStorage {
+  // Auth storage delegation
+  getUser = authStorage.getUser;
+  upsertUser = authStorage.upsertUser;
 
   async getSignals(): Promise<Signal[]> {
-    return Array.from(this.signals.values()).sort((a, b) => 
-      (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
-    );
+    return await db.select().from(signals).orderBy(desc(signals.createdAt));
   }
 
   async getSignal(id: number): Promise<Signal | undefined> {
-    return this.signals.get(id);
+    const [signal] = await db.select().from(signals).where(eq(signals.id, id));
+    return signal;
   }
 
   async createSignal(insertSignal: InsertSignal): Promise<Signal> {
-    const id = this.currentId++;
-    const signal: Signal = {
-      ...insertSignal,
-      id,
-      createdAt: new Date(),
-      isPremium: insertSignal.isPremium ?? false,
-      style: insertSignal.style ?? "DAILY",
-      category: insertSignal.category ?? "FOREX",
-      analysis: insertSignal.analysis ?? null,
-      imageUrl: insertSignal.imageUrl ?? null,
-      status: insertSignal.status ?? "ACTIVE",
-      closedAt: null,
-      resultPips: null,
-    };
-    this.signals.set(id, signal);
+    const [signal] = await db.insert(signals).values(insertSignal).returning();
     return signal;
   }
 
   async updateSignal(id: number, updates: UpdateSignalRequest): Promise<Signal> {
-    const existing = this.signals.get(id);
-    if (!existing) throw new Error("Signal not found");
-    const updated = { ...existing, ...updates };
-    this.signals.set(id, updated);
+    const [updated] = await db
+      .update(signals)
+      .set(updates)
+      .where(eq(signals.id, id))
+      .returning();
     return updated;
   }
 
   async deleteSignal(id: number): Promise<void> {
-    this.signals.delete(id);
+    await db.delete(signals).where(eq(signals.id, id));
   }
 
   async getMarketData(symbol: string): Promise<MarketData | undefined> {
-    return this.marketData.get(symbol);
+    const [data] = await db.select().from(marketData).where(eq(marketData.symbol, symbol));
+    return data;
   }
 
   async updateMarketData(data: Omit<MarketData, "id" | "updatedAt">): Promise<MarketData> {
-    const existing = this.marketData.get(data.symbol);
-    const updated: MarketData = {
-      ...data,
-      id: existing?.id || this.currentId++,
-      updatedAt: new Date()
-    };
-    this.marketData.set(data.symbol, updated);
+    const [updated] = await db
+      .insert(marketData)
+      .values(data)
+      .onConflictDoUpdate({
+        target: marketData.symbol,
+        set: {
+          price: data.price,
+          change: data.change,
+          changePercent: data.changePercent,
+          updatedAt: new Date(),
+        }
+      })
+      .returning();
     return updated;
   }
 
   async getAllMarketData(): Promise<MarketData[]> {
-    return Array.from(this.marketData.values());
+    return await db.select().from(marketData);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
